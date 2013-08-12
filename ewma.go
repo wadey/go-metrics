@@ -21,9 +21,9 @@ type EWMA interface {
 // events and processes them on each tick.  It uses the sync/atomic package
 // to manage uncounted events.
 type StandardEWMA struct {
+	sync.Mutex
 	alpha     float64
 	init      bool
-	mutex     *sync.Mutex
 	rate      float64
 	uncounted int64
 }
@@ -35,7 +35,6 @@ var _ EWMA = &StandardEWMA{}
 func NewEWMA(alpha float64) *StandardEWMA {
 	return &StandardEWMA{
 		alpha: alpha,
-		mutex: &sync.Mutex{},
 	}
 }
 
@@ -64,8 +63,8 @@ func (a *StandardEWMA) Tick() {
 	count := atomic.LoadInt64(&a.uncounted)
 	atomic.AddInt64(&a.uncounted, -count)
 	instantRate := float64(count) / float64(5e9)
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
+	a.Lock()
+	defer a.Unlock()
 	if a.init {
 		a.rate += a.alpha * (instantRate - a.rate)
 	} else {

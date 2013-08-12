@@ -28,8 +28,8 @@ type Sample interface {
 //
 // <http://www.research.att.com/people/Cormode_Graham/library/publications/CormodeShkapenyukSrivastavaXu09.pdf>
 type ExpDecaySample struct {
+	sync.Mutex
 	alpha         float64
-	mutex         *sync.Mutex
 	reservoirSize int
 	t0, t1        time.Time
 	values        expDecaySampleHeap
@@ -43,7 +43,6 @@ var _ Sample = &ExpDecaySample{}
 func NewExpDecaySample(reservoirSize int, alpha float64) *ExpDecaySample {
 	s := &ExpDecaySample{
 		alpha:         alpha,
-		mutex:         &sync.Mutex{},
 		reservoirSize: reservoirSize,
 		t0:            time.Now(),
 		values:        make(expDecaySampleHeap, 0, reservoirSize),
@@ -54,8 +53,8 @@ func NewExpDecaySample(reservoirSize int, alpha float64) *ExpDecaySample {
 
 // Clear all samples.
 func (s *ExpDecaySample) Clear() {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.Lock()
+	defer s.Unlock()
 	s.values = make(expDecaySampleHeap, 0, s.reservoirSize)
 	s.t0 = time.Now()
 	s.t1 = s.t0.Add(rescaleThreshold)
@@ -63,15 +62,15 @@ func (s *ExpDecaySample) Clear() {
 
 // Return the size of the sample, which is at most the reservoir size.
 func (s *ExpDecaySample) Size() int {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.Lock()
+	defer s.Unlock()
 	return len(s.values)
 }
 
 // Update the sample with a new value.
 func (s *ExpDecaySample) Update(v int64) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.Lock()
+	defer s.Unlock()
 	if len(s.values) == s.reservoirSize {
 		heap.Pop(&s.values)
 	}
@@ -95,8 +94,8 @@ func (s *ExpDecaySample) Update(v int64) {
 
 // Return all the values in the sample.
 func (s *ExpDecaySample) Values() []int64 {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.Lock()
+	defer s.Unlock()
 	values := make([]int64, len(s.values))
 	for i, v := range s.values {
 		values[i] = v.v

@@ -28,8 +28,8 @@ type Registry interface {
 // The standard implementation of a Registry is a mutex-protected map
 // of names to metrics.
 type StandardRegistry struct {
+	sync.Mutex
 	metrics map[string]interface{}
-	mutex   *sync.Mutex
 }
 
 // Force the compiler to check that StandardRegistry implements Registry.
@@ -39,7 +39,6 @@ var _ Registry = &StandardRegistry{}
 func NewRegistry() *StandardRegistry {
 	return &StandardRegistry{
 		metrics: make(map[string]interface{}),
-		mutex:   &sync.Mutex{},
 	}
 }
 
@@ -52,8 +51,8 @@ func (r *StandardRegistry) Each(f func(string, interface{})) {
 
 // Get the metric by the given name or nil if none is registered.
 func (r *StandardRegistry) Get(name string) interface{} {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
+	r.Lock()
+	defer r.Unlock()
 	return r.metrics[name]
 }
 
@@ -61,16 +60,16 @@ func (r *StandardRegistry) Get(name string) interface{} {
 func (r *StandardRegistry) Register(name string, i interface{}) {
 	switch i.(type) {
 	case Counter, Gauge, Healthcheck, Histogram, Meter, Timer:
-		r.mutex.Lock()
-		defer r.mutex.Unlock()
+		r.Lock()
+		defer r.Unlock()
 		r.metrics[name] = i
 	}
 }
 
 // Run all registered healthchecks.
 func (r *StandardRegistry) RunHealthchecks() {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
+	r.Lock()
+	defer r.Unlock()
 	for _, i := range r.metrics {
 		if h, ok := i.(Healthcheck); ok {
 			h.Check()
@@ -80,15 +79,15 @@ func (r *StandardRegistry) RunHealthchecks() {
 
 // Unregister the metric with the given name.
 func (r *StandardRegistry) Unregister(name string) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
+	r.Lock()
+	defer r.Unlock()
 	delete(r.metrics, name)
 }
 
 func (r *StandardRegistry) registered() map[string]interface{} {
 	metrics := make(map[string]interface{}, len(r.metrics))
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
+	r.Lock()
+	defer r.Unlock()
 	for name, i := range r.metrics {
 		metrics[name] = i
 	}

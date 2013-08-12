@@ -27,8 +27,8 @@ type Histogram interface {
 // The standard implementation of a Histogram uses a Sample and a goroutine
 // to synchronize its calculations.
 type StandardHistogram struct {
+	sync.Mutex
 	count, sum, min, max int64
-	mutex                *sync.Mutex
 	s                    Sample
 	variance             [2]float64
 }
@@ -44,7 +44,6 @@ func NewHistogram(s Sample) *StandardHistogram {
 		count:    0,
 		max:      math.MinInt64,
 		min:      math.MaxInt64,
-		mutex:    &sync.Mutex{},
 		s:        s,
 		sum:      0,
 		variance: [2]float64{-1.0, 0.0},
@@ -54,8 +53,8 @@ func NewHistogram(s Sample) *StandardHistogram {
 // Clear the histogram.
 func (h *StandardHistogram) Clear() {
 	h.s.Clear()
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
+	h.Lock()
+	defer h.Unlock()
 	h.count = 0
 	h.max = math.MinInt64
 	h.min = math.MaxInt64
@@ -70,8 +69,8 @@ func (h *StandardHistogram) Count() int64 {
 
 // Return the maximal value seen since the histogram was last cleared.
 func (h *StandardHistogram) Max() int64 {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
+	h.Lock()
+	defer h.Unlock()
 	if 0 == h.count {
 		return 0
 	}
@@ -80,8 +79,8 @@ func (h *StandardHistogram) Max() int64 {
 
 // Return the mean of all values seen since the histogram was last cleared.
 func (h *StandardHistogram) Mean() float64 {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
+	h.Lock()
+	defer h.Unlock()
 	if 0 == h.count {
 		return 0
 	}
@@ -90,8 +89,8 @@ func (h *StandardHistogram) Mean() float64 {
 
 // Return the minimal value seen since the histogram was last cleared.
 func (h *StandardHistogram) Min() int64 {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
+	h.Lock()
+	defer h.Unlock()
 	if 0 == h.count {
 		return 0
 	}
@@ -136,8 +135,8 @@ func (h *StandardHistogram) StdDev() float64 {
 
 // Update the histogram with a new value.
 func (h *StandardHistogram) Update(v int64) {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
+	h.Lock()
+	defer h.Unlock()
 	h.s.Update(v)
 	h.count++
 	if v < h.min {
@@ -161,8 +160,8 @@ func (h *StandardHistogram) Update(v int64) {
 
 // Return the variance of all values seen since the histogram was last cleared.
 func (h *StandardHistogram) Variance() float64 {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
+	h.Lock()
+	defer h.Unlock()
 	if 1 >= h.count {
 		return 0.0
 	}
